@@ -1,51 +1,91 @@
 #include <Arduino.h>
 
-#define TOUCH_ELECTRODE D7
-#define PHOTORES_PIN A0
-#define START_PIN D1
-#define STOP_PIN D2
+#include <U8x8lib.h>
 
-IRAM_ATTR void start(void);
+#ifdef U8X8_HAVE_HW_SPI
+#include <SPI.h>
+#endif
+#ifdef U8X8_HAVE_HW_I2C
+#include <Wire.h>
+#endif
+
+// Output PINS
+#define TOUCH_ELECTRODE D5
+
+// Interrupt PINS
+#define STOP_PIN D6
+
 IRAM_ATTR void stop(void);
+void drawHeadline(void);
 
-volatile unsigned long started1 = 0;
+U8X8_SSD1306_128X64_NONAME_HW_I2C display(U8X8_PIN_NONE);
+
+volatile unsigned long started = 0;
 volatile unsigned long stopped = 0;
-volatile int first= 0;
+volatile int first_stop = 0;
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  delay(1000);
-  Serial.println("Hello Flo");
+  delay(100);
+
+  display.begin();
+  drawHeadline();
+
+  Serial.println("\nLet's get started!\n");
+  display.println("Let's go!\n");
   pinMode(TOUCH_ELECTRODE, OUTPUT);
 
-  pinMode(START_PIN, INPUT);
   pinMode(STOP_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(START_PIN), start, RISING);
   attachInterrupt(digitalPinToInterrupt(STOP_PIN), stop, RISING);
+
+  delay(1000);
+  digitalWrite(TOUCH_ELECTRODE, LOW);
 }
 
-IRAM_ATTR void start() {
-  if (first == 1) {
-    started1 = millis();
-    first = 0;
+IRAM_ATTR void stop()
+{
+  if (first_stop == 1)
+  {
+    stopped = millis();
+    first_stop = 0;
   }
 }
 
-IRAM_ATTR void stop() {
-  stopped = millis();
+void drawHeadline(void)
+{
+  display.setCursor(0, 0);
+  display.setFont(u8x8_font_amstrad_cpc_extended_f);
+  delay(100);
+  display.clear();
+
+  display.inverse();
+  display.print("Touch-O-Mat 3000");
+  display.noInverse();
+  display.setCursor(0, 2);
 }
 
-void loop() {
-  digitalWrite(TOUCH_ELECTRODE, LOW);
-  delay(100);
-
-  Serial.println("Starting measurement. ");
-  first = 1;
+void loop()
+{
+  drawHeadline();
+  Serial.println("Starting measurement. \n");
+  display.println("Get ready... \n");
+  delay(500);
+  display.println("Touched... \n");
+  first_stop = 1;
   digitalWrite(TOUCH_ELECTRODE, HIGH);
+  started = millis();
   delay(1000);
-  Serial.printf("started %lu, stopped %lu, delay %lu ms\n", started1, stopped, stopped-started1);
-
-  Serial.println("Reset...");
+  drawHeadline();
   digitalWrite(TOUCH_ELECTRODE, LOW);
-  delay(2500);
+  Serial.printf("started %lu, stopped %lu, delay %lu ms\n", started, stopped, stopped - started);
+  unsigned long latency = stopped - started;
+  if (latency > 500)
+  {
+    latency = 0;
+  }
+  display.printf("Start %lu\nStop  %lu\nDelay %lu ms \n", started, stopped, latency);
+
+  Serial.println("Reset...\n");
+  delay(2000);
 }
