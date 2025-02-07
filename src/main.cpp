@@ -43,7 +43,7 @@ void setup()
   digitalWrite(TOUCH_ELECTRODE, LOW);
 }
 
-IRAM_ATTR void stop()
+ICACHE_RAM_ATTR void stop()
 {
   if (first_stop == 1)
   {
@@ -71,8 +71,9 @@ void loop()
   Serial.println("Starting measurement. \n");
   display.println("Get ready... \n");
   delay(500);
-  display.println("Touched... \n");
   first_stop = 1;
+  Serial.println("Touched... \n");
+  display.println("Touched... \n");
   digitalWrite(TOUCH_ELECTRODE, HIGH);
   started = millis();
   delay(1000);
@@ -80,8 +81,9 @@ void loop()
   digitalWrite(TOUCH_ELECTRODE, LOW);
   Serial.printf("started %lu, stopped %lu, delay %lu ms\n", started, stopped, stopped - started);
   unsigned long latency = stopped - started;
-  if (latency > 500)
+  if (latency > 1000)
   {
+
     latency = 0;
   }
   display.printf("Start %lu\nStop  %lu\nDelay %lu ms \n", started, stopped, latency);
